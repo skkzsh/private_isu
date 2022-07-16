@@ -181,12 +181,12 @@ func makePosts(results []Post, csrfToken string, allComments bool) ([]Post, erro
 	var posts []Post
 
 	for _, p := range results {
-		err := db.Get(&p.CommentCount, "SELECT COUNT(*) AS `count` FROM `comments` WHERE `post_id` = ?", p.ID)
+		err := db.Get(&p.CommentCount, "SELECT COUNT(*) AS `count` FROM `comments` WHERE `post_id` = ?", p.ID)  // FIXME: slow
 		if err != nil {
 			return nil, err
 		}
 
-		query := "SELECT * FROM `comments` WHERE `post_id` = ? ORDER BY `created_at` DESC"
+		query := "SELECT * FROM `comments` WHERE `post_id` = ? ORDER BY `created_at` DESC"  // FIXME: slow
 		if !allComments {
 			query += " LIMIT 3"
 		}
@@ -387,7 +387,7 @@ func getLogout(w http.ResponseWriter, r *http.Request) {
 	http.Redirect(w, r, "/", http.StatusFound)
 }
 
-func getIndex(w http.ResponseWriter, r *http.Request) {
+func getIndex(w http.ResponseWriter, r *http.Request) {  // FIXME: slow
 	me := getSessionUser(r)
 
 	results := []Post{}
@@ -421,7 +421,7 @@ func getIndex(w http.ResponseWriter, r *http.Request) {
 	}{posts, me, getCSRFToken(r), getFlash(w, r, "notice")})
 }
 
-func getAccountName(w http.ResponseWriter, r *http.Request) {
+func getAccountName(w http.ResponseWriter, r *http.Request) {  // FIXME: slow
 	accountName := chi.URLParam(r, "accountName")
 	user := User{}
 
