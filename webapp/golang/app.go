@@ -17,6 +17,8 @@ import (
 	"time"
 
 	"gopkg.in/DataDog/dd-trace-go.v1/profiler"
+	chitrace "gopkg.in/DataDog/dd-trace-go.v1/contrib/go-chi/chi"
+	"gopkg.in/DataDog/dd-trace-go.v1/ddtrace/tracer"
 
 	"github.com/bradfitz/gomemcache/memcache"
 	gsm "github.com/bradleypeabody/gorilla-sessions-memcache"
@@ -852,7 +854,13 @@ func main() {
 	}
 	defer db.Close()
 
+	// Start the tracer
+	tracer.Start()
+	defer tracer.Stop()
+
 	r := chi.NewRouter()
+
+	r.Use(chitrace.Middleware(chitrace.WithServiceName(DatadogServiceName)))
 
 	r.Get("/initialize", getInitialize)
 	r.Get("/login", getLogin)
