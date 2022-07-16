@@ -12,6 +12,13 @@ require (
 )
 
 require (
+	github.com/DataDog/datadog-go/v5 v5.0.2 // indirect
+	github.com/DataDog/gostackparse v0.5.0 // indirect
+	github.com/Microsoft/go-winio v0.5.1 // indirect
+	github.com/google/pprof v0.0.0-20210423192551-a2663126120b // indirect
+	github.com/google/uuid v1.3.0 // indirect
 	github.com/gorilla/securecookie v1.1.1 // indirect
 	github.com/memcachier/mc v2.0.1+incompatible // indirect
+	golang.org/x/sys v0.0.0-20220227234510-4e6760a101f9 // indirect
+	gopkg.in/DataDog/dd-trace-go.v1 v1.40.0 // indirect
 )
