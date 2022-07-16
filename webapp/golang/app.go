@@ -855,7 +855,11 @@ func main() {
 	defer db.Close()
 
 	// Start the tracer
-	tracer.Start()
+	tracer.Start(
+		tracer.WithService(DatadogServiceName),
+		tracer.WithEnv(DatadogEnv),
+		//tracer.WithRuntimeMetrics(),
+	)
 	defer tracer.Stop()
 
 	r := chi.NewRouter()
