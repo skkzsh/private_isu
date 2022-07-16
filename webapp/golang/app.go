@@ -16,8 +16,6 @@ import (
 	"strings"
 	"time"
 
-	"golang.org/x/sync/singleflight"
-
 	"gopkg.in/DataDog/dd-trace-go.v1/profiler"
 	chitrace "gopkg.in/DataDog/dd-trace-go.v1/contrib/go-chi/chi.v5"
 	"gopkg.in/DataDog/dd-trace-go.v1/ddtrace/tracer"
@@ -394,23 +392,11 @@ func getIndex(w http.ResponseWriter, r *http.Request) {  // FIXME: slow
 
 	results := []Post{}
 
-	var sfGroup singleflight.Group
-	resultsIf, err, _ := sfGroup.Do("indexResults", func() (interface{}, error) {
-		r := []Post{}
-		err := db.Select(&r, "SELECT `id`, `user_id`, `body`, `mime`, `created_at` FROM `posts` ORDER BY `created_at` DESC")
-		return r, err
-	})
+	err := db.Select(&results, "SELECT `id`, `user_id`, `body`, `mime`, `created_at` FROM `posts` ORDER BY `created_at` DESC")
 	if err != nil {
 		log.Print(err)
 		return
 	}
-	results = resultsIf.([]Post)
-
-	//err := db.Select(&results, "SELECT `id`, `user_id`, `body`, `mime`, `created_at` FROM `posts` ORDER BY `created_at` DESC") // FIXME: slow
-	//if err != nil {
-	//	log.Print(err)
-	//	return
-	//}
 
 	posts, err := makePosts(results, getCSRFToken(r), false)
 	if err != nil {
