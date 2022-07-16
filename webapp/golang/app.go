@@ -177,46 +177,23 @@ func getFlash(w http.ResponseWriter, r *http.Request, key string) string {
 	}
 }
 
-func makePosts(results []Post, csrfToken string, isAllComments bool) ([]Post, error) {
+func makePosts(results []Post, csrfToken string, allComments bool) ([]Post, error) {
 	var posts []Post
 
-	var postIds = make([]int, 0, len(results))
 	for _, p := range results {
-		postIds = append(postIds, p.ID)
-	}
+		err := db.Get(&p.CommentCount, "SELECT COUNT(*) AS `count` FROM `comments` WHERE `post_id` = ?", p.ID)  // FIXME: slow
+		if err != nil {
+			return nil, err
+		}
 
-	var allComments []Comment
-	query, params, err := sqlx.In("SELECT * FROM `comments` where post_id in (?) ORDER BY `created_at` DESC", postIds)
-	if err != nil {
-		return nil, err
-	}
-	err = db.Select(&allComments, query, params...)
-	if err != nil {
-		return nil, err
-	}
-	var commentsMap = make(map[int][]Comment)
-	for _, c := range allComments {
-		commentsMap[c.PostID] = append(commentsMap[c.PostID], c)
-	}
-
-	for _, p := range results {
-		// err = db.Get(&p.CommentCount, "SELECT COUNT(*) AS `count` FROM `comments` WHERE `post_id` = ?", p.ID)  // FIXME: slow
-		// if err != nil {
-		//  	return nil, err
-		// }
-		//query := "SELECT * FROM `comments` WHERE `post_id` = ? ORDER BY `created_at` DESC"  // FIXME: slow
-		//if !isAllComments {
-		//	query += " LIMIT 3"
-		//}
+		query := "SELECT * FROM `comments` WHERE `post_id` = ? ORDER BY `created_at` DESC"  // FIXME: slow
+		if !allComments {
+			query += " LIMIT 3"
+		}
 		var comments []Comment
-		//err = db.Select(&comments, query, p.ID)
-		//if err != nil {
-		//	return nil, err
-		//}
-		comments = commentsMap[p.ID]
-		p.CommentCount = len(comments)
-		if isAllComments && len(comments) > 3 {
-				comments = comments[0:2]
+		err = db.Select(&comments, query, p.ID)
+		if err != nil {
+			return nil, err
 		}
 
 		for i := 0; i < len(comments); i++ {
