@@ -72,11 +72,6 @@ type Comment struct {
 	User      User
 }
 
-type CommentPostCount struct {
-	PostID       int `db:"post_id"`
-	CommentCount int `db:"count"`
-}
-
 func init() {
 	memdAddr := os.Getenv("ISUCONP_MEMCACHED_ADDRESS")
 	if memdAddr == "" {
@@ -185,22 +180,11 @@ func getFlash(w http.ResponseWriter, r *http.Request, key string) string {
 func makePosts(results []Post, csrfToken string, allComments bool) ([]Post, error) {
 	var posts []Post
 
-	var counts []CommentPostCount
-	err := db.Select(&counts, "SELECT `post_id`, COUNT(*) AS `count` FROM `comments` GROUP BY `post_id`")
-	if err != nil {
-		return nil, err
-	}
-	var countMap = make(map[int]int)
-	for _, c := range counts {
-		countMap[c.PostID] = c.CommentCount
-	}
-
 	for _, p := range results {
-		//err := db.Get(&p.CommentCount, "SELECT COUNT(*) AS `count` FROM `comments` WHERE `post_id` = ?", p.ID)  // FIXME: slow
-		//if err != nil {
-		//	return nil, err
-		//}
-		p.CommentCount = countMap[p.ID]
+		err := db.Get(&p.CommentCount, "SELECT COUNT(*) AS `count` FROM `comments` WHERE `post_id` = ?", p.ID)  // FIXME: slow
+		if err != nil {
+			return nil, err
+		}
 
 		query := "SELECT * FROM `comments` WHERE `post_id` = ? ORDER BY `created_at` DESC"  // FIXME: slow
 		if !allComments {
