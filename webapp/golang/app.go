@@ -17,7 +17,7 @@ import (
 	"time"
 
 	"gopkg.in/DataDog/dd-trace-go.v1/profiler"
-	chitrace "gopkg.in/DataDog/dd-trace-go.v1/contrib/go-chi/chi"
+	chitrace "gopkg.in/DataDog/dd-trace-go.v1/contrib/go-chi/chi.v5"
 	"gopkg.in/DataDog/dd-trace-go.v1/ddtrace/tracer"
 
 	"github.com/bradfitz/gomemcache/memcache"
