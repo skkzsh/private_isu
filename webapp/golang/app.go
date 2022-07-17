@@ -644,19 +644,19 @@ func postIndex(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// mime := ""
+	mime := ""
 	ext := ""
 	if file != nil {
 		// 投稿のContent-Typeからファイルのタイプを決定する
 		contentType := header.Header["Content-Type"][0]
 		if strings.Contains(contentType, "jpeg") {
-			// mime = "image/jpeg"
+			mime = "image/jpeg"
 			ext = "jpg"
 		} else if strings.Contains(contentType, "png") {
-			// mime = "image/png"
+			mime = "image/png"
 			ext = "png"
 		} else if strings.Contains(contentType, "gif") {
-			// mime = "image/gif"
+			mime = "image/gif"
 			ext = "gif"
 		} else {
 			session := getSession(r)
@@ -687,9 +687,8 @@ func postIndex(w http.ResponseWriter, r *http.Request) {
 	result, err := db.Exec(
 		query,
 		me.ID,
+		mime,
 		"", // dummy
-		"", // dummy
-		// mime,
 		// filedata,
 		r.FormValue("body"),
 	)
