@@ -196,25 +196,27 @@ func makePosts(results []Post, csrfToken string, allComments bool) ([]Post, erro
 			return nil, err
 		}
 
-		var userIds = make([]int, 0, len(comments))
-		for _, c := range comments {
-			userIds = append(userIds, c.UserID)
-		}
-		userQuery, params, err := sqlx.In("SELECT * FROM `users` WHERE `id` in (?)", userIds)
-		if err != nil {
-			return nil, err
-		}
-		var users = make([]User, 0, len(comments))
-		err = db.Select(&users, userQuery, params...)
-		if err != nil {
-			return nil, err
-		}
-		var userMap = make(map[int]User)
-		for _, u := range users {
-			userMap[u.ID] = u
-		}
-		for _, c := range comments {
-			c.User = userMap[c.User.ID]
+		if len(comments) > 0 {
+			var userIds = make([]int, 0, len(comments))
+			for _, c := range comments {
+				userIds = append(userIds, c.UserID)
+			}
+			userQuery, params, err := sqlx.In("SELECT * FROM `users` WHERE `id` in (?)", userIds)
+			if err != nil {
+				return nil, err
+			}
+			var users = make([]User, 0, len(comments))
+			err = db.Select(&users, userQuery, params...)
+			if err != nil {
+				return nil, err
+			}
+			var userMap = make(map[int]User)
+			for _, u := range users {
+				userMap[u.ID] = u
+			}
+			for _, c := range comments {
+				c.User = userMap[c.User.ID]
+			}
 		}
 
 		// for i := 0; i < len(comments); i++ {
