@@ -38,6 +38,7 @@ const (
 	postsPerPage       = 20
 	ISO8601Format      = "2006-01-02T15:04:05-07:00"
 	UploadLimit        = 10 * 1024 * 1024 // 10mb
+	imageDirName       = "/home/isucon/private_isu/webapp/image/"
 	DatadogServiceName = "private-isu"
 	DatadogEnv         = "myenv"
 )
@@ -643,16 +644,20 @@ func postIndex(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	mime := ""
+	// mime := ""
+	ext := ""
 	if file != nil {
 		// 投稿のContent-Typeからファイルのタイプを決定する
 		contentType := header.Header["Content-Type"][0]
 		if strings.Contains(contentType, "jpeg") {
-			mime = "image/jpeg"
+			// mime = "image/jpeg"
+			ext = "jpg"
 		} else if strings.Contains(contentType, "png") {
-			mime = "image/png"
+			// mime = "image/png"
+			ext = "png"
 		} else if strings.Contains(contentType, "gif") {
-			mime = "image/gif"
+			// mime = "image/gif"
+			ext = "gif"
 		} else {
 			session := getSession(r)
 			session.Values["notice"] = "投稿できる画像形式はjpgとpngとgifだけです"
@@ -678,12 +683,13 @@ func postIndex(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	query := "INSERT INTO `posts` (`user_id`, `mime`, `imgdata`, `body`) VALUES (?,?,?,?)"
+	// query := "INSERT INTO `posts` (`user_id`, `mime`, `imgdata`, `body`) VALUES (?,?,?,?)"
+	query := "INSERT INTO `posts` (`user_id`, `body`) VALUES (?,?)"
 	result, err := db.Exec(
 		query,
 		me.ID,
-		mime,
-		filedata,
+		// mime,
+		// filedata,
 		r.FormValue("body"),
 	)
 	if err != nil {
@@ -695,6 +701,18 @@ func postIndex(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		log.Print(err)
 		return
+	}
+
+	fullName := imageDirName + strconv.FormatInt(pid, 10) + "." + ext
+	f, err := os.Create(fullName)
+	if err != nil {
+		log.Fatal(err)
+	}
+	defer f.Close()
+
+	_, err = f.Write(filedata)
+	if err != nil {
+		log.Fatal(err)
 	}
 
 	http.Redirect(w, r, "/posts/"+strconv.FormatInt(pid, 10), http.StatusFound)
@@ -710,10 +728,7 @@ func getImage(w http.ResponseWriter, r *http.Request) {
 
 	ext := chi.URLParam(r, "ext")
 
-	// ファイルがディスクにあればディスクから取得
-	// なければDBから取得し、ディスクに保存
-	const dirName = "/home/isucon/private_isu/webapp/image/"
-	fullName := dirName + pidStr + "." + ext
+	fullName := imageDirName + pidStr + "." + ext
 	var data []byte
 	if _, err := os.Stat(fullName); err == nil {
 		data, err = ioutil.ReadFile(fullName)
