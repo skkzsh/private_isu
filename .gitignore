@@ -19,3 +19,7 @@ portal/tmp
 
 
 .*.swp
+
+*.jpg
+*.png
+*.gif
