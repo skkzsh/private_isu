@@ -156,7 +156,7 @@ func getSessionUser(r *http.Request) User {
 
 	u := User{}
 
-	err := db.Get(&u, "SELECT * FROM `users` WHERE `id` = ?", uid)
+	err := db.Get(&u, "SELECT * FROM `users` WHERE `id` = ?", uid) // FIXME: 呼出多
 	if err != nil {
 		return User{}
 	}
@@ -197,7 +197,7 @@ func makePosts(results []Post, csrfToken string, allComments bool) ([]Post, erro
 		}
 
 		for i := 0; i < len(comments); i++ {
-			err := db.Get(&comments[i].User, "SELECT * FROM `users` WHERE `id` = ?", comments[i].UserID)
+			err := db.Get(&comments[i].User, "SELECT * FROM `users` WHERE `id` = ?", comments[i].UserID) // FIXME: 呼出多
 			if err != nil {
 				return nil, err
 			}
@@ -210,7 +210,7 @@ func makePosts(results []Post, csrfToken string, allComments bool) ([]Post, erro
 
 		p.Comments = comments
 
-		err = db.Get(&p.User, "SELECT * FROM `users` WHERE `id` = ?", p.UserID)
+		err = db.Get(&p.User, "SELECT * FROM `users` WHERE `id` = ?", p.UserID) // FIXME: 呼出多
 		if err != nil {
 			return nil, err
 		}
@@ -387,12 +387,12 @@ func getLogout(w http.ResponseWriter, r *http.Request) {
 	http.Redirect(w, r, "/", http.StatusFound)
 }
 
-func getIndex(w http.ResponseWriter, r *http.Request) {  // FIXME: slow
+func getIndex(w http.ResponseWriter, r *http.Request) { // FIXME: slow
 	me := getSessionUser(r)
 
 	results := []Post{}
 
-	err := db.Select(&results, "SELECT `id`, `user_id`, `body`, `mime`, `created_at` FROM `posts` ORDER BY `created_at` DESC")
+	err := db.Select(&results, "SELECT `id`, `user_id`, `body`, `mime`, `created_at` FROM `posts` ORDER BY `created_at` DESC") // FIXME: slow
 	if err != nil {
 		log.Print(err)
 		return
@@ -421,7 +421,7 @@ func getIndex(w http.ResponseWriter, r *http.Request) {  // FIXME: slow
 	}{posts, me, getCSRFToken(r), getFlash(w, r, "notice")})
 }
 
-func getAccountName(w http.ResponseWriter, r *http.Request) {  // FIXME: slow
+func getAccountName(w http.ResponseWriter, r *http.Request) { // FIXME: slow
 	accountName := chi.URLParam(r, "accountName")
 	user := User{}
 
