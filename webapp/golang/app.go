@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"html/template"
 	"io"
+	"io/ioutil"
 	"log"
 	"net/http"
 	"net/url"
@@ -707,25 +708,62 @@ func getImage(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	post := Post{}
-	err = db.Get(&post, "SELECT * FROM `posts` WHERE `id` = ?", pid)
-	if err != nil {
-		log.Print(err)
-		return
-	}
-
 	ext := chi.URLParam(r, "ext")
 
-	if ext == "jpg" && post.Mime == "image/jpeg" ||
-		ext == "png" && post.Mime == "image/png" ||
-		ext == "gif" && post.Mime == "image/gif" {
-		w.Header().Set("Content-Type", post.Mime)
-		_, err := w.Write(post.Imgdata)
+	// ファイルがディスクにあればディスクから取得
+	// なければDBから取得し、ディスクに保存
+	const dirName = "/home/isucon/private_isu/webapp/image/"
+	fullName := dirName + pidStr + "." + ext
+	var data []byte
+	if _, err := os.Stat(fullName); err == nil {
+		data, err = ioutil.ReadFile(fullName)
+		if err != nil {
+			log.Fatal(err)
+		}
+
+		if ext == "jpg" ||
+			ext == "png" ||
+			ext == "gif" {
+			w.Header().Set("Content-Type", "image/"+ext)
+			_, err := w.Write(data)
+			if err != nil {
+				log.Print(err)
+				return
+			}
+			return
+		}
+
+	} else {
+		post := Post{}
+		err = db.Get(&post, "SELECT * FROM `posts` WHERE `id` = ?", pid)
 		if err != nil {
 			log.Print(err)
 			return
 		}
-		return
+
+		f, err := os.Create(fullName)
+		if err != nil {
+			log.Fatal(err)
+		}
+		defer f.Close()
+
+		data = post.Imgdata
+		_, err = f.Write(data)
+		if err != nil {
+			log.Fatal(err)
+		}
+
+		if ext == "jpg" && post.Mime == "image/jpeg" ||
+			ext == "png" && post.Mime == "image/png" ||
+			ext == "gif" && post.Mime == "image/gif" {
+			w.Header().Set("Content-Type", post.Mime)
+			_, err := w.Write(data)
+			if err != nil {
+				log.Print(err)
+				return
+			}
+			return
+		}
 	}
 
 	w.Header().Set("Cache-Control", "public, max-age=86400")
