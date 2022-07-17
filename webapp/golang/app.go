@@ -16,9 +16,9 @@ import (
 	"strings"
 	"time"
 
-	"gopkg.in/DataDog/dd-trace-go.v1/profiler"
 	chitrace "gopkg.in/DataDog/dd-trace-go.v1/contrib/go-chi/chi.v5"
 	"gopkg.in/DataDog/dd-trace-go.v1/ddtrace/tracer"
+	"gopkg.in/DataDog/dd-trace-go.v1/profiler"
 
 	"github.com/bradfitz/gomemcache/memcache"
 	gsm "github.com/bradleypeabody/gorilla-sessions-memcache"
@@ -34,11 +34,11 @@ var (
 )
 
 const (
-	postsPerPage  = 20
-	ISO8601Format = "2006-01-02T15:04:05-07:00"
-	UploadLimit   = 10 * 1024 * 1024 // 10mb
-	DatadogServiceName        = "private-isu"
-	DatadogEnv                = "myenv"
+	postsPerPage       = 20
+	ISO8601Format      = "2006-01-02T15:04:05-07:00"
+	UploadLimit        = 10 * 1024 * 1024 // 10mb
+	DatadogServiceName = "private-isu"
+	DatadogEnv         = "myenv"
 )
 
 type User struct {
@@ -196,12 +196,33 @@ func makePosts(results []Post, csrfToken string, allComments bool) ([]Post, erro
 			return nil, err
 		}
 
-		for i := 0; i < len(comments); i++ {
-			err := db.Get(&comments[i].User, "SELECT * FROM `users` WHERE `id` = ?", comments[i].UserID) // FIXME: 呼出多
-			if err != nil {
-				return nil, err
-			}
+		var userIds = make([]int, 0, len(comments))
+		for _, c := range comments {
+			userIds = append(userIds, c.UserID)
 		}
+		userQuery, params, err := sqlx.In("SELECT * FROM `users` WHERE `id` in (?)", userIds)
+		if err != nil {
+			return nil, err
+		}
+		var users = make([]User, 0, len(comments))
+		err = db.Select(&users, userQuery, params...)
+		if err != nil {
+			return nil, err
+		}
+		var userMap = make(map[int]User)
+		for _, u := range users {
+			userMap[u.ID] = u
+		}
+		for _, c := range comments {
+			c.User = userMap[c.User.ID]
+		}
+
+		// for i := 0; i < len(comments); i++ {
+		// 	err := db.Get(&comments[i].User, "SELECT * FROM `users` WHERE `id` = ?", comments[i].UserID) // FIXME: 呼出多
+		// 	if err != nil {
+		// 		return nil, err
+		// 	}
+		// }
 
 		// reverse
 		for i, j := 0, len(comments)-1; i < j; i, j = i+1, j-1 {
@@ -858,7 +879,7 @@ func main() {
 	tracer.Start(
 		tracer.WithService(DatadogServiceName),
 		tracer.WithEnv(DatadogEnv),
-		//tracer.WithRuntimeMetrics(),
+		// tracer.WithRuntimeMetrics(),
 	)
 	defer tracer.Stop()
 
