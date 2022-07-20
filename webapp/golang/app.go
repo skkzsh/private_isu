@@ -337,7 +337,7 @@ func getLogin(w http.ResponseWriter, r *http.Request) {
 	}{me, getFlash(w, r, "notice")})
 }
 
-func postLogin(w http.ResponseWriter, r *http.Request) {
+func postLogin(w http.ResponseWriter, r *http.Request) { // FIXME: slow
 	if isLogin(getSessionUser(r)) {
 		http.Redirect(w, r, "/", http.StatusFound)
 		return
@@ -471,7 +471,7 @@ func getIndex(w http.ResponseWriter, r *http.Request) { // FIXME: slow
 	}{posts, me, getCSRFToken(r), getFlash(w, r, "notice")})
 }
 
-func getAccountName(w http.ResponseWriter, r *http.Request) { // FIXME: slow
+func getAccountName(w http.ResponseWriter, r *http.Request) {
 	accountName := chi.URLParam(r, "accountName")
 	user := User{}
 
@@ -502,7 +502,7 @@ func getAccountName(w http.ResponseWriter, r *http.Request) { // FIXME: slow
 	}
 
 	commentCount := 0
-	err = db.Get(&commentCount, "SELECT COUNT(*) AS count FROM `comments` WHERE `user_id` = ?", user.ID) // FIXME: slow
+	err = db.Get(&commentCount, "SELECT COUNT(*) AS count FROM `comments` WHERE `user_id` = ?", user.ID)
 	if err != nil {
 		log.Print(err)
 		return
@@ -558,7 +558,7 @@ func getAccountName(w http.ResponseWriter, r *http.Request) { // FIXME: slow
 	}{posts, user, postCount, commentCount, commentedCount, me})
 }
 
-func getPosts(w http.ResponseWriter, r *http.Request) {
+func getPosts(w http.ResponseWriter, r *http.Request) { // FIXME: slow
 	m, err := url.ParseQuery(r.URL.RawQuery)
 	if err != nil {
 		w.WriteHeader(http.StatusInternalServerError)
