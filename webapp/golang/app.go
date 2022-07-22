@@ -179,14 +179,11 @@ func getFlash(w http.ResponseWriter, r *http.Request, key string) string {
 	}
 }
 
-func makePosts(results []Post, csrfToken string, isAllComments bool) ([]Post, error) {
-	var posts []Post
-
-	var postIds = make([]int, 0, len(results))
-	for _, p := range results {
+func getCommentsMap(posts []Post) (map[int][]Comment, error) {
+	var postIds = make([]int, 0, len(posts))
+	for _, p := range posts {
 		postIds = append(postIds, p.ID)
 	}
-
 	var allComments []Comment
 	query, params, err := sqlx.In("SELECT * FROM `comments` where post_id in (?) ORDER BY `created_at` DESC", postIds)
 	if err != nil {
@@ -199,6 +196,16 @@ func makePosts(results []Post, csrfToken string, isAllComments bool) ([]Post, er
 	var commentsMap = make(map[int][]Comment)
 	for _, c := range allComments {
 		commentsMap[c.PostID] = append(commentsMap[c.PostID], c)
+	}
+	return commentsMap, nil
+}
+
+func makePosts(results []Post, csrfToken string, isAllComments bool) ([]Post, error) {
+	var posts []Post
+
+	commentsMap, err := getCommentsMap(results)
+	if err != nil {
+		return nil, err
 	}
 
 	for _, p := range results {
