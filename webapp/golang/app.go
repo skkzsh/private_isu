@@ -2,7 +2,6 @@ package main
 
 import (
 	crand "crypto/rand"
-	"encoding/json"
 	"fmt"
 	"html/template"
 	"io"
@@ -31,9 +30,8 @@ import (
 )
 
 var (
-	db             *sqlx.DB
-	memcacheClient *memcache.Client
-	store          *gsm.MemcacheStore
+	db    *sqlx.DB
+	store *gsm.MemcacheStore
 )
 
 const (
@@ -81,7 +79,7 @@ func init() {
 	if memdAddr == "" {
 		memdAddr = "localhost:11211"
 	}
-	memcacheClient = memcache.New(memdAddr)
+	memcacheClient := memcache.New(memdAddr)
 	store = gsm.NewMemcacheStore(memcacheClient, "iscogram_", []byte("sendagaya"))
 	log.SetFlags(log.Ldate | log.Ltime | log.Lshortfile)
 }
@@ -161,7 +159,6 @@ func getSessionUser(r *http.Request) User {
 	u := User{}
 
 	err := db.Get(&u, "SELECT * FROM `users` WHERE `id` = ?", uid)
-	// u, err := getUser(uid.(int64)) // FIXME: use cache
 	if err != nil {
 		return User{}
 	}
@@ -203,30 +200,28 @@ func getCommentsMap(posts []Post) (map[int][]Comment, error) {
 	return commentsMap, nil
 }
 
-// FIXME: CUDのときにキャッシュにも更新する
-func getUser(userId int) (User, error) {
-	var user = User{}
-	it, err := memcacheClient.Get(fmt.Sprintf("user_%d", userId))
-	if err == nil {
-		err := json.Unmarshal(it.Value, &user)
-		if err != nil {
-			return User{}, err
-		}
-	} else {
-		err := db.Get(&user, "SELECT * FROM `users` WHERE `id` = ?", userId)
-		if err != nil {
-			return User{}, err
-		}
-		j, err := json.Marshal(user)
-		if err != nil {
-			return User{}, err
-		}
-		memcacheClient.Set(&memcache.Item{
-			Key:   fmt.Sprintf("user_%d", userId),
-			Value: j,
-		})
+func setCommentUser(comments []Comment) ([]Comment, error) {
+	var userIds = make([]int, 0, len(comments))
+	for _, c := range comments {
+		userIds = append(userIds, c.UserID)
 	}
-	return user, nil
+	userQuery, params, err := sqlx.In("SELECT * FROM `users` WHERE `id` in (?)", userIds) // FIXME: slow
+	if err != nil {
+		return nil, err
+	}
+	var users = make([]User, 0, len(comments))
+	err = db.Select(&users, userQuery, params...)
+	if err != nil {
+		return nil, err
+	}
+	var userMap = make(map[int]User)
+	for _, u := range users {
+		userMap[u.ID] = u
+	}
+	for _, c := range comments {
+		c.User = userMap[c.User.ID]
+	}
+	return comments, nil
 }
 
 func makePosts(results []Post, csrfToken string, isAllComments bool) ([]Post, error) {
@@ -257,8 +252,8 @@ func makePosts(results []Post, csrfToken string, isAllComments bool) ([]Post, er
 			comments = comments[0:2]
 		}
 
-		for i := 0; i < len(comments); i++ {
-			comments[i].User, err = getUser(comments[i].UserID)
+		if len(comments) > 0 {
+			comments, err = setCommentUser(comments)
 			if err != nil {
 				return nil, err
 			}
