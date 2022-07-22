@@ -77,4 +77,6 @@ max_binlog_size   = 100M
 # binlog_do_db		= include_database_name
 # binlog_ignore_db	= include_database_name
 
-# innodb_flush_method=O_DIRECT
+innodb_flush_method=O_DIRECT
+innodb_flush_log_at_trx_commit = 0
+disable-log-bin=1
