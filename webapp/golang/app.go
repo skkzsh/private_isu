@@ -226,7 +226,7 @@ func makePosts(results []Post, csrfToken string, isAllComments bool) ([]Post, er
 			for _, c := range comments {
 				userIds = append(userIds, c.UserID)
 			}
-			userQuery, params, err := sqlx.In("SELECT * FROM `users` WHERE `id` in (?)", userIds)
+			userQuery, params, err := sqlx.In("SELECT * FROM `users` WHERE `id` in (?)", userIds) // FIXME: slow
 			if err != nil {
 				return nil, err
 			}
@@ -615,7 +615,7 @@ func getPostsID(w http.ResponseWriter, r *http.Request) {
 
 	results := []Post{}
 	// err = db.Select(&results, "SELECT * FROM `posts` WHERE `id` = ?", pid)
-	err = db.Select(&results, "SELECT p.* FROM `posts` p JOIN `users` u ON p.user_id = u.id WHERE u.del_flg = 0 AND p.id = ?", pid)
+	err = db.Select(&results, "SELECT p.id, p.user_id, p.mime, p.body, p.created_at FROM `posts` p JOIN `users` u ON p.user_id = u.id WHERE u.del_flg = 0 AND p.id = ?", pid)
 	if err != nil {
 		log.Print(err)
 		return
