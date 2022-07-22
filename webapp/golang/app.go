@@ -200,6 +200,30 @@ func getCommentsMap(posts []Post) (map[int][]Comment, error) {
 	return commentsMap, nil
 }
 
+func setCommentUser(comments []Comment) ([]Comment, error) {
+	var userIds = make([]int, 0, len(comments))
+	for _, c := range comments {
+		userIds = append(userIds, c.UserID)
+	}
+	userQuery, params, err := sqlx.In("SELECT * FROM `users` WHERE `id` in (?)", userIds) // FIXME: slow
+	if err != nil {
+		return nil, err
+	}
+	var users = make([]User, 0, len(comments))
+	err = db.Select(&users, userQuery, params...)
+	if err != nil {
+		return nil, err
+	}
+	var userMap = make(map[int]User)
+	for _, u := range users {
+		userMap[u.ID] = u
+	}
+	for _, c := range comments {
+		c.User = userMap[c.User.ID]
+	}
+	return comments, nil
+}
+
 func makePosts(results []Post, csrfToken string, isAllComments bool) ([]Post, error) {
 	var posts []Post
 
@@ -229,25 +253,9 @@ func makePosts(results []Post, csrfToken string, isAllComments bool) ([]Post, er
 		}
 
 		if len(comments) > 0 {
-			var userIds = make([]int, 0, len(comments))
-			for _, c := range comments {
-				userIds = append(userIds, c.UserID)
-			}
-			userQuery, params, err := sqlx.In("SELECT * FROM `users` WHERE `id` in (?)", userIds) // FIXME: slow
+			comments, err = setCommentUser(comments)
 			if err != nil {
 				return nil, err
-			}
-			var users = make([]User, 0, len(comments))
-			err = db.Select(&users, userQuery, params...)
-			if err != nil {
-				return nil, err
-			}
-			var userMap = make(map[int]User)
-			for _, u := range users {
-				userMap[u.ID] = u
-			}
-			for _, c := range comments {
-				c.User = userMap[c.User.ID]
 			}
 		}
 
