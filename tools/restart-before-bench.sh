@@ -13,4 +13,5 @@ sudo systemctl restart isu-go
 
 sudo systemctl restart mysql
 sudo systemctl restart nginx
+sudo systemctl restart memcached
 
