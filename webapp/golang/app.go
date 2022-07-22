@@ -230,25 +230,58 @@ func getUser(userId int) (User, error) {
 }
 
 func setCommentUser(comments []Comment) ([]Comment, error) {
-	var userIds = make([]int, 0, len(comments))
+	var mcKeys = make([]string, 0, len(comments))
 	for _, c := range comments {
-		userIds = append(userIds, c.UserID)
+		mcKeys = append(mcKeys, fmt.Sprintf("user_%d", c.UserID))
 	}
-	userQuery, params, err := sqlx.In("SELECT * FROM `users` WHERE `id` in (?)", userIds) // FIXME: slow
+	mcItems, err := memcacheClient.GetMulti(mcKeys)
+	if err == nil {
+		return nil, err
+	}
+	var noCacheUserIds = make([]int, 0, len(comments))
+	for _, c := range comments {
+		mcKey := fmt.Sprintf("user_%d", c.UserID)
+		mcItem, ok := mcItems[mcKey]
+		if ok {
+			err := json.Unmarshal(mcItem.Value, &c.User)
+			if err != nil {
+				return nil, err
+			}
+		} else {
+			noCacheUserIds = append(noCacheUserIds, c.UserID)
+		}
+	}
+	if len(noCacheUserIds) == 0 {
+		return comments, nil
+	}
+
+	userQuery, params, err := sqlx.In("SELECT * FROM `users` WHERE `id` in (?)", noCacheUserIds)
 	if err != nil {
 		return nil, err
 	}
-	var users = make([]User, 0, len(comments))
-	err = db.Select(&users, userQuery, params...)
+	var noCacheUsers = make([]User, 0, len(noCacheUserIds))
+	err = db.Select(&noCacheUsers, userQuery, params...)
 	if err != nil {
 		return nil, err
 	}
-	var userMap = make(map[int]User)
-	for _, u := range users {
-		userMap[u.ID] = u
+	var noCacheUserMap = make(map[int]User)
+	for _, u := range noCacheUsers {
+		noCacheUserMap[u.ID] = u
+
+		j, err := json.Marshal(u)
+		if err != nil {
+			return nil, err
+		}
+		memcacheClient.Set(&memcache.Item{
+			Key:   fmt.Sprintf("user_%d", u.ID),
+			Value: j,
+		})
 	}
 	for _, c := range comments {
-		c.User = userMap[c.User.ID]
+		u, ok := noCacheUserMap[c.User.ID]
+		if ok {
+			c.User = u
+		}
 	}
 	return comments, nil
 }
